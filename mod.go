@@ -10,8 +10,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-// QueryBind binds query parameters to a struct of type T based on `query` tags.
-func QueryBind[T any](c *fiber.Ctx) (*T, error) {
+// Bind binds query parameters to a struct of type T based on `query` tags.
+func Bind[T any](c *fiber.Ctx) (*T, error) {
 	var t T
 	val := reflect.ValueOf(&t).Elem()
 	typ := val.Type()
@@ -27,10 +27,13 @@ func QueryBind[T any](c *fiber.Ctx) (*T, error) {
 			continue
 		}
 
+		fmt.Println(tag)
+
 		paramValue := c.Query(tag)
 		if paramValue == "" {
 			continue
 		}
+		fmt.Println(paramValue)
 
 		switch field.Kind() {
 		case reflect.Slice:
@@ -90,8 +93,8 @@ func setValueFromString(v reflect.Value, value string) error {
 	return nil
 }
 
-// ResponseQueryBind sets the HX-Push-Url header in the response based on the struct's `query` tags.
-func ResponseQueryBind[T any](c *fiber.Ctx, value T) {
+// ResponseBind sets the HX-Push-Url header in the response based on the struct's `query` tags.
+func ResponseBind[T any](c *fiber.Ctx, value T) {
 	val := reflect.ValueOf(value)
 	typ := reflect.TypeOf(value)
 
