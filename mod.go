@@ -27,13 +27,10 @@ func Bind[T any](c *fiber.Ctx) (*T, error) {
 			continue
 		}
 
-		fmt.Println(tag)
-
 		paramValue := c.Query(tag)
 		if paramValue == "" {
 			continue
 		}
-		fmt.Println(paramValue)
 
 		switch field.Kind() {
 		case reflect.Slice:
