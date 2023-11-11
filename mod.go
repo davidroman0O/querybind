@@ -22,6 +22,29 @@ func Bind[T any](c *fiber.Ctx) (*T, error) {
 	val := reflect.ValueOf(&t).Elem()
 	typ := val.Type()
 
+	// Parse the Referer URL's query parameters if present.
+	referer := string(c.Request().Header.Referer())
+	var allQueryParams url.Values
+	var err error
+	if referer != "" {
+		parsedURL, err := url.Parse(referer)
+		if err != nil {
+			return nil, err
+		}
+		allQueryParams = parsedURL.Query()
+	} else {
+		allQueryParams, err = url.ParseQuery(c.OriginalURL())
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Combine with the current HTMX request's query parameters
+	c.Context().QueryArgs().VisitAll(func(key, value []byte) {
+		allQueryParams.Set(string(key), string(value))
+	})
+
+	// Bind the combined query parameters to the struct
 	for i := 0; i < val.NumField(); i++ {
 		field := val.Field(i)
 		if !field.CanSet() {
@@ -33,39 +56,18 @@ func Bind[T any](c *fiber.Ctx) (*T, error) {
 			continue
 		}
 
-		paramValue := c.Query(tag)
+		// Set the field value from the combined query parameters
+		paramValue := allQueryParams.Get(tag)
 		if paramValue == "" {
 			continue
 		}
 
-		switch field.Kind() {
-		case reflect.Slice:
-			separator := ","
-			sliceOf := field.Type().Elem()
-			values := strings.Split(paramValue, separator)
-			slice := reflect.MakeSlice(field.Type(), 0, len(values))
-			for _, value := range values {
-				elem := reflect.New(sliceOf).Elem()
-				if err := setValueFromString(elem, value); err != nil {
-					return nil, err
-				}
-				slice = reflect.Append(slice, elem)
-			}
-			field.Set(slice)
-		default:
-			if err := setValueFromString(field, paramValue); err != nil {
-				return nil, err
-			}
+		if err := setValueFromString(field, paramValue); err != nil {
+			return nil, err
 		}
 	}
-	return &t, nil
-}
 
-// WithPath creates an option to set the Path in the ResponseBindParams.
-func WithPath(path string) ResponseBindOption {
-	return func(params *ResponseBindParams) {
-		params.Path = &path
-	}
+	return &t, nil
 }
 
 // setValueFromString sets a value from a string based on the value's type and returns an error if any.
@@ -97,10 +99,27 @@ func setValueFromString(v reflect.Value, value string) error {
 		} else {
 			return err
 		}
+	case reflect.Slice:
+		// Assumes a comma-separated list for slice types
+		elements := strings.Split(value, ",")
+		slice := reflect.MakeSlice(v.Type(), len(elements), len(elements))
+		for i, s := range elements {
+			elem := slice.Index(i)
+			if err := setValueFromString(elem, s); err != nil {
+				return err
+			}
+		}
+		v.Set(slice)
 	default:
-		return fmt.Errorf("unsupported kind %s", v.Kind())
+		return fmt.Errorf("unsupported kind %s for query binding", v.Kind())
 	}
 	return nil
+}
+
+func WithPath(path string) ResponseBindOption {
+	return func(params *ResponseBindParams) {
+		params.Path = &path
+	}
 }
 
 // ResponseBind sets the HX-Push-Url header in the response based on the struct's `query` tags.
@@ -122,7 +141,7 @@ func ResponseBind[T any](c *fiber.Ctx, value T, options ...ResponseBindOption) {
 	queryParams := url.Values{}
 	for i := 0; i < val.NumField(); i++ {
 		field := val.Field(i)
-		tag := typ.Field(i).Tag.Get("query")
+		tag := typ.Field(i).Tag.Get("querybind")
 		if tag == "" {
 			continue
 		}
@@ -144,6 +163,26 @@ func ResponseBind[T any](c *fiber.Ctx, value T, options ...ResponseBindOption) {
 		}
 	}
 
-	fullURL := c.BaseURL() + *params.Path + "?" + queryParams.Encode()
+	// Encode the query parameters manually to avoid encoding commas
+	encodedQuery := encodeQueryParams(queryParams)
+
+	fullURL := c.BaseURL() + *params.Path + "?" + encodedQuery
+
 	c.Set("HX-Push-Url", fullURL)
+}
+
+// encodeQueryParams encodes the parameters without encoding commas.
+func encodeQueryParams(params url.Values) string {
+	query := ""
+	for key, values := range params {
+		for _, value := range values {
+			if query != "" {
+				query += "&"
+			}
+			query += url.QueryEscape(key) + "=" + url.QueryEscape(value)
+		}
+	}
+	// Replace encoded commas back to literal commas
+	query = strings.ReplaceAll(query, "%2C", ",")
+	return query
 }
