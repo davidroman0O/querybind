@@ -10,6 +10,12 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
+type ResponseBindParams struct {
+	Path *string
+}
+
+type ResponseBindOption func(*ResponseBindParams)
+
 // Bind binds query parameters to a struct of type T based on `query` tags.
 func Bind[T any](c *fiber.Ctx) (*T, error) {
 	var t T
@@ -55,6 +61,13 @@ func Bind[T any](c *fiber.Ctx) (*T, error) {
 	return &t, nil
 }
 
+// WithPath creates an option to set the Path in the ResponseBindParams.
+func WithPath(path string) ResponseBindOption {
+	return func(params *ResponseBindParams) {
+		params.Path = &path
+	}
+}
+
 // setValueFromString sets a value from a string based on the value's type and returns an error if any.
 func setValueFromString(v reflect.Value, value string) error {
 	switch v.Kind() {
@@ -91,14 +104,25 @@ func setValueFromString(v reflect.Value, value string) error {
 }
 
 // ResponseBind sets the HX-Push-Url header in the response based on the struct's `query` tags.
-func ResponseBind[T any](c *fiber.Ctx, value T) {
+func ResponseBind[T any](c *fiber.Ctx, value T, options ...ResponseBindOption) {
+	params := ResponseBindParams{}
+	for _, option := range options {
+		option(&params)
+	}
+
+	// If no custom path is provided, use the request's path
+	if params.Path == nil {
+		defaultPath := c.Path()
+		params.Path = &defaultPath
+	}
+
 	val := reflect.ValueOf(value)
 	typ := reflect.TypeOf(value)
 
-	params := url.Values{}
+	queryParams := url.Values{}
 	for i := 0; i < val.NumField(); i++ {
 		field := val.Field(i)
-		tag := typ.Field(i).Tag.Get("querybind")
+		tag := typ.Field(i).Tag.Get("query")
 		if tag == "" {
 			continue
 		}
@@ -116,10 +140,10 @@ func ResponseBind[T any](c *fiber.Ctx, value T) {
 		}
 
 		if stringValue != "" {
-			params.Add(tag, stringValue)
+			queryParams.Add(tag, stringValue)
 		}
 	}
 
-	fullURL := c.BaseURL() + c.Path() + "?" + params.Encode()
+	fullURL := c.BaseURL() + *params.Path + "?" + queryParams.Encode()
 	c.Set("HX-Push-Url", fullURL)
 }
