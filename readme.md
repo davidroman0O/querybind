@@ -18,6 +18,8 @@ go get github.com/davidroman0O/querybind
 
 ## Usage
 
+See examples [querybind-example](https://github.com/davidroman0O/querybind-examples)
+
 ### QueryBind
 
 Bind query parameters from the request to a struct:
