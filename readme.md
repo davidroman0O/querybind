@@ -2,6 +2,11 @@
 
 The `querybind` package is a utility library for the [Fiber](https://gofiber.io/) web framework, designed to simplify query parameter binding and state management in HTMX-driven applications. It provides a way to bind query parameters to Go structs and manage URL state seamlessly.
 
+## TODO
+
+- Integrate more libs/framework, not just fiber
+- more examples
+
 ## Features
 
 - Bind URL query parameters to Go structs dynamically using struct tags.
