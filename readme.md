@@ -5,6 +5,8 @@ The `querybind` package is a utility library for the [Fiber](https://gofiber.io/
 ## TODO
 
 - Integrate more libs/framework, not just fiber
+- WithRedirection: might not want to use HX-Push
+- WithCustom: might want to do something custom  ¯\_(ツ)_/¯ 
 - more examples
 
 ## Features
