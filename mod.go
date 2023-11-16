@@ -6,8 +6,6 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-
-	"github.com/gofiber/fiber/v2"
 )
 
 type ResponseBindParams struct {
@@ -17,13 +15,13 @@ type ResponseBindParams struct {
 type ResponseBindOption func(*ResponseBindParams)
 
 // Bind binds query parameters to a struct of type T based on `query` tags.
-func Bind[T any](c *fiber.Ctx) (*T, error) {
+func Bind[T any](ctx HTTPContext) (*T, error) {
 	var t T
 	val := reflect.ValueOf(&t).Elem()
 	typ := val.Type()
 
 	// Parse the Referer URL's query parameters if present.
-	referer := string(c.Request().Header.Referer())
+	referer := ctx.Referer()
 	var allQueryParams url.Values
 	var err error
 	if referer != "" {
@@ -33,16 +31,14 @@ func Bind[T any](c *fiber.Ctx) (*T, error) {
 		}
 		allQueryParams = parsedURL.Query()
 	} else {
-		allQueryParams, err = url.ParseQuery(c.OriginalURL())
+		allQueryParams, err = url.ParseQuery(ctx.OriginalURL())
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	// Combine with the current HTMX request's query parameters
-	c.Context().QueryArgs().VisitAll(func(key, value []byte) {
-		allQueryParams.Set(string(key), string(value))
-	})
+	ctx.QueryParams(&allQueryParams)
 
 	// Bind the combined query parameters to the struct
 	for i := 0; i < val.NumField(); i++ {
@@ -123,7 +119,7 @@ func WithPath(path string) ResponseBindOption {
 }
 
 // ResponseBind sets the HX-Push-Url header in the response based on the struct's `query` tags.
-func ResponseBind[T any](c *fiber.Ctx, value T, options ...ResponseBindOption) {
+func ResponseBind[T any](ctx HTTPContext, value T, options ...ResponseBindOption) {
 	params := ResponseBindParams{}
 	for _, option := range options {
 		option(&params)
@@ -131,7 +127,7 @@ func ResponseBind[T any](c *fiber.Ctx, value T, options ...ResponseBindOption) {
 
 	// If no custom path is provided, use the request's path
 	if params.Path == nil {
-		defaultPath := c.Path()
+		defaultPath := ctx.Path()
 		params.Path = &defaultPath
 	}
 
@@ -166,9 +162,9 @@ func ResponseBind[T any](c *fiber.Ctx, value T, options ...ResponseBindOption) {
 	// Encode the query parameters manually to avoid encoding commas
 	encodedQuery := encodeQueryParams(queryParams)
 
-	fullURL := c.BaseURL() + *params.Path + "?" + encodedQuery
+	fullURL := ctx.BaseUrl() + *params.Path + "?" + encodedQuery
 
-	c.Set("HX-Push-Url", fullURL)
+	ctx.SetHeader("HX-Push-Url", fullURL)
 }
 
 // encodeQueryParams encodes the parameters without encoding commas.
