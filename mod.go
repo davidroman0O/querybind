@@ -6,8 +6,6 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-
-	"github.com/gofiber/fiber/v2"
 )
 
 type ResponseBindParams struct {
@@ -17,13 +15,13 @@ type ResponseBindParams struct {
 type ResponseBindOption func(*ResponseBindParams)
 
 // Bind binds query parameters to a struct of type T based on `query` tags.
-func Bind[T any](c *fiber.Ctx) (*T, error) {
+func Bind[T any](ctx HTTPContext) (*T, error) {
 	var t T
 	val := reflect.ValueOf(&t).Elem()
 	typ := val.Type()
 
 	// Parse the Referer URL's query parameters if present.
-	referer := string(c.Request().Header.Referer())
+	referer := ctx.Referer()
 	var allQueryParams url.Values
 	var err error
 	if referer != "" {
@@ -33,7 +31,7 @@ func Bind[T any](c *fiber.Ctx) (*T, error) {
 		}
 		allQueryParams = parsedURL.Query()
 	} else {
-		allQueryParams, err = url.ParseQuery(c.OriginalURL())
+		allQueryParams, err = url.ParseQuery(ctx.OriginalURL())
 		if err != nil {
 			return nil, err
 		}
@@ -123,7 +121,7 @@ func WithPath(path string) ResponseBindOption {
 }
 
 // ResponseBind sets the HX-Push-Url header in the response based on the struct's `query` tags.
-func ResponseBind[T any](c *fiber.Ctx, value T, options ...ResponseBindOption) {
+func ResponseBind[T any](ctx HTTPContext, value T, options ...ResponseBindOption) {
 	params := ResponseBindParams{}
 	for _, option := range options {
 		option(&params)
