@@ -38,9 +38,7 @@ func Bind[T any](ctx HTTPContext) (*T, error) {
 	}
 
 	// Combine with the current HTMX request's query parameters
-	c.Context().QueryArgs().VisitAll(func(key, value []byte) {
-		allQueryParams.Set(string(key), string(value))
-	})
+	ctx.QueryParams(&allQueryParams)
 
 	// Bind the combined query parameters to the struct
 	for i := 0; i < val.NumField(); i++ {
@@ -129,7 +127,7 @@ func ResponseBind[T any](ctx HTTPContext, value T, options ...ResponseBindOption
 
 	// If no custom path is provided, use the request's path
 	if params.Path == nil {
-		defaultPath := c.Path()
+		defaultPath := ctx.Path()
 		params.Path = &defaultPath
 	}
 
@@ -164,9 +162,9 @@ func ResponseBind[T any](ctx HTTPContext, value T, options ...ResponseBindOption
 	// Encode the query parameters manually to avoid encoding commas
 	encodedQuery := encodeQueryParams(queryParams)
 
-	fullURL := c.BaseURL() + *params.Path + "?" + encodedQuery
+	fullURL := ctx.BaseUrl() + *params.Path + "?" + encodedQuery
 
-	c.Set("HX-Push-Url", fullURL)
+	ctx.SetHeader("HX-Push-Url", fullURL)
 }
 
 // encodeQueryParams encodes the parameters without encoding commas.

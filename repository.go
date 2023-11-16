@@ -6,6 +6,9 @@ import "net/url"
 type HTTPContext interface {
 	GetHeader(name string) string
 	SetHeader(name, value string)
-	QueryParams() url.Values
 	OriginalURL() string
+	Referer() string
+	BaseUrl() string
+	Path() string
+	QueryParams(params *url.Values)
 }

@@ -20,7 +20,7 @@ func TestBind_Success(t *testing.T) {
 	app := fiber.New()
 
 	app.Get("/", func(c *fiber.Ctx) error {
-		result, err := Bind[TestStruct](c)
+		result, err := Bind[TestStruct](Fiber(c))
 		if err != nil {
 			t.Errorf("Bind returned an error: %v", err)
 		}
@@ -58,7 +58,7 @@ func TestBind_MissingQueryParams(t *testing.T) {
 	app := fiber.New()
 
 	app.Get("/", func(c *fiber.Ctx) error {
-		result, err := Bind[TestStruct](c)
+		result, err := Bind[TestStruct](Fiber(c))
 		if err != nil {
 			t.Errorf("Bind returned an error: %v", err)
 		}
@@ -78,7 +78,7 @@ func TestBind_InvalidQueryValues(t *testing.T) {
 	app := fiber.New()
 
 	app.Get("/", func(c *fiber.Ctx) error {
-		_, err := Bind[TestStruct](c)
+		_, err := Bind[TestStruct](Fiber(c))
 		if err == nil {
 			t.Errorf("Expected error, got nil")
 		}
@@ -101,7 +101,7 @@ func TestBind_EmptyQueryParams(t *testing.T) {
 	app := fiber.New()
 
 	app.Get("/", func(c *fiber.Ctx) error {
-		result, err := Bind[TestStruct](c)
+		result, err := Bind[TestStruct](Fiber(c))
 		if err != nil {
 			t.Errorf("Bind returned an error: %v", err)
 		}
@@ -125,7 +125,7 @@ func TestBind_UnsupportedTypes(t *testing.T) {
 	app := fiber.New()
 
 	app.Get("/", func(c *fiber.Ctx) error {
-		_, err := Bind[UnsupportedStruct](c)
+		_, err := Bind[UnsupportedStruct](Fiber(c))
 		if err == nil {
 			t.Errorf("Expected an error for unsupported field type, got nil")
 		}
@@ -141,7 +141,7 @@ func TestBind_StructPointer(t *testing.T) {
 	app := fiber.New()
 
 	app.Get("/", func(c *fiber.Ctx) error {
-		result, err := Bind[*TestStruct](c)
+		result, err := Bind[*TestStruct](Fiber(c))
 		if err != nil {
 			t.Errorf("Bind returned an error: %v", err)
 		}
@@ -167,7 +167,7 @@ func TestBind_InvalidQuerySyntax(t *testing.T) {
 	app := fiber.New()
 
 	app.Get("/", func(c *fiber.Ctx) error {
-		_, err := Bind[TestStruct](c)
+		_, err := Bind[TestStruct](Fiber(c))
 		if err == nil {
 			t.Errorf("Expected an error for invalid query syntax, got nil")
 		}
